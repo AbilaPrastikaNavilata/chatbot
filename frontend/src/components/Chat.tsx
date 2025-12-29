@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from './ui/dialog';
 import { type ChatRequest, type ChatResponse, type ChatHistoryItem, type ChatSource } from '../types/knowledge';
 import { Send, Bot, User, Trash2, Info, Eye } from 'lucide-react';
@@ -131,17 +131,17 @@ const Chat: React.FC = () => {
       }
 
       const data: ChatResponse = await response.json();
-      
+
       const assistantMessageObj: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
         content: data.response,
         timestamp: new Date()
       };
-      
+
       setMessages(prev => [...prev, assistantMessageObj]);
       setSources(data.sources || []);
-      
+
     } catch (err) {
       console.error('Error sending message:', err);
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengirim pesan');
@@ -185,9 +185,9 @@ const Chat: React.FC = () => {
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('id-ID', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return date.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -203,7 +203,7 @@ const Chat: React.FC = () => {
               Tanyakan apapun tentang knowledge base Anda
             </p>
             <p className="text-sm text-gray-500">
-              Model : Google Gemini 2.5 Flash
+              Model : Groq LLaMA 3.3 70B
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -221,7 +221,7 @@ const Chat: React.FC = () => {
         </div>
 
         {/* Chat Messages Container */}
-        <div 
+        <div
           ref={chatContainerRef}
           className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"
           style={{ scrollBehavior: 'smooth' }}
@@ -238,29 +238,26 @@ const Chat: React.FC = () => {
 
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${
-                msg.type === 'user' ? 'flex-row-reverse space-x-reverse' : 'flex-row'
-              }`}>
-                {/* Avatar */}
-                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                  msg.type === 'user' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 text-gray-600'
+              <div className={`flex items-end space-x-2 max-w-xs lg:max-w-md ${msg.type === 'user' ? 'flex-row-reverse space-x-reverse' : 'flex-row'
                 }`}>
+                {/* Avatar */}
+                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${msg.type === 'user'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-gray-200 text-gray-600'
+                  }`}>
                   {msg.type === 'user' ? (
                     <User className="w-4 h-4" />
                   ) : (
                     <Bot className="w-4 h-4" />
                   )}
                 </div>
-                
+
                 {/* Message Bubble */}
                 <div className="flex flex-col">
-                  <div className={`px-4 py-2 rounded-2xl ${
-                    msg.type === 'user'
+                  <div className={`px-4 py-2 rounded-2xl ${msg.type === 'user'
                       ? 'bg-blue-500 text-white rounded-br-md'
                       : 'bg-white text-gray-800 rounded-bl-md shadow-sm border'
-                  }`}>
+                    }`}>
                     {msg.type === 'user' ? (
                       <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
                     ) : (
@@ -336,9 +333,8 @@ const Chat: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  <span className={`text-xs text-gray-400 mt-1 ${
-                    msg.type === 'user' ? 'text-right' : 'text-left'
-                  }`}>
+                  <span className={`text-xs text-gray-400 mt-1 ${msg.type === 'user' ? 'text-right' : 'text-left'
+                    }`}>
                     {formatTime(msg.timestamp)}
                   </span>
                 </div>
@@ -384,8 +380,8 @@ const Chat: React.FC = () => {
                 }
               }}
             />
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={isLoading || !message.trim()}
               className="rounded-full w-10 h-10 p-0 bg-blue-500 hover:bg-blue-600"
             >
@@ -456,8 +452,8 @@ const Chat: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Informasi Penyimpanan Chat</DialogTitle>
             <DialogDescription>
-              Riwayat percakapan Anda disimpan secara lokal di browser menggunakan localStorage. 
-              Data chat akan tetap tersimpan meskipun Anda menutup dan membuka kembali aplikasi, 
+              Riwayat percakapan Anda disimpan secara lokal di browser menggunakan localStorage.
+              Data chat akan tetap tersimpan meskipun Anda menutup dan membuka kembali aplikasi,
               namun akan hilang jika Anda menghapus data browser atau menggunakan mode incognito.
             </DialogDescription>
           </DialogHeader>

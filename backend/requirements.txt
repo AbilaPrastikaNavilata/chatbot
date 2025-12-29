@@ -5,8 +5,10 @@ motor
 pymongo
 sentence-transformers
 huggingface_hub
-google-generativeai
+groq
 pandas
 PyPDF2
 python-multipart
 openpyxl
+aiosmtplib
+email-validator

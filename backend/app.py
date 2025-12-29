@@ -1,5 +1,18 @@
 # Tambahkan import ini di bagian atas
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form
+import hashlib
+import aiosmtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import secrets
 import pandas as pd
 import PyPDF2
 from pathlib import Path
@@ -10,7 +23,7 @@ from typing import List, Optional, Dict, Any
 import os
 import json
 import csv
-import google.generativeai as genai
+from groq import Groq
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
 from bson import ObjectId
@@ -42,13 +55,28 @@ MONGODB_URI = os.getenv("MONGODB_URI")
 client = motor.motor_asyncio.AsyncIOMotorClient(MONGODB_URI, server_api=ServerApi('1'))
 db = client.get_database("chatbot_cs")
 knowledge_collection = db.get_collection("rag_data_knowledge")
+users_collection = db.get_collection("users")
+conversations_collection = db.get_collection("whatsapp_conversations")
 
 # Initialize embedding model
 model = SentenceTransformer('all-MiniLM-L6-v2')  # Good balance of speed and quality
 
-# Initialize Google Gemini
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-genai.configure(api_key=GOOGLE_API_KEY)
+# Initialize Groq
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+groq_client = Groq(api_key=GROQ_API_KEY)
+
+# SMTP Configuration
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_EMAIL = os.getenv("SMTP_EMAIL")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+SMTP_SENDER_NAME = os.getenv("SMTP_SENDER_NAME", "Knowledge Management System")
+
+# SMTP Configuration
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_EMAIL = os.getenv("SMTP_EMAIL")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
 # Pydantic models
 class ChatRequest(BaseModel):
@@ -70,6 +98,28 @@ class UpdateKnowledgeItem(BaseModel):
     content: Optional[str] = None
     source: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
+
+class UserRegister(BaseModel):
+    username: str
+    email: str
+    password: str
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class WhatsAppChatRequest(BaseModel):
+    phone_number: str  # Format: 628xxx@c.us
+    message: str
+    message_id: Optional[str] = None
+
+class WhatsAppChatResponse(BaseModel):
+    response: str
+    phone_number: str
+    sources: Optional[List[Dict[str, Any]]] = []
 
 # Helper functions
 async def generate_embedding(text: str):
@@ -148,42 +198,50 @@ def cosine_similarity(vec1, vec2):
     return float(similarity)
 
 async def process_chat(message: str, history: List[Dict[str, str]]):
-    """Process chat message with RAG approach"""
+    """Process chat message with RAG approach using Groq"""
     # Search for relevant context
     relevant_docs = await search_similar_documents(message)
     
     # Format context for the model
     context = "\n\n".join([f"Title: {doc['title']}\nContent: {doc['content']}" for doc in relevant_docs])
     
-    # Format conversation history
-    formatted_history = []
+    # Format conversation history for Groq (OpenAI format)
+    messages = []
+    
+    # System message
+    system_prompt = f"""Kamu adalah asisten virtual yang ramah dan helpful. Jawab dengan gaya percakapan natural seperti manusia, santai tapi sopan.
+Jangan terlalu formal atau kaku. Jangan mengulang informasi yang sudah diberikan sebelumnya.
+Jika tidak tahu jawabannya, akui saja dengan jujur tanpa berbelit-belit.
+Gunakan bahasa Indonesia sebagai bahasa utama, tapi jika user bertanya dalam bahasa Inggris, jawab dalam bahasa Inggris.
+Jangan gunakan bahasa lain selain Indonesia dan Inggris.
+
+Konteks dari knowledge base:
+{context}"""
+    
+    messages.append({"role": "system", "content": system_prompt})
+    
+    # Add conversation history
     for entry in history:
-        if 'user' in entry:
-            formatted_history.append({"role": "user", "parts": [entry['user']]})
-        if 'assistant' in entry:
-            formatted_history.append({"role": "model", "parts": [entry['assistant']]})
+        if 'user' in entry and entry['user']:
+            messages.append({"role": "user", "content": entry['user']})
+        if 'assistant' in entry and entry['assistant']:
+            messages.append({"role": "assistant", "content": entry['assistant']})
     
-    # Create Gemini model
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    # Add current message
+    messages.append({"role": "user", "content": message})
     
-    # Start conversation
-    chat = model.start_chat(history=formatted_history)
-    
-    # Generate response with context
-    prompt = f"""
-    Based on the following information, please answer the user's question.
-    If you don't know the answer based on the provided context, say so or you can just say that you can't say that because it was too personal or a secret, but on't too harsh when answering, be a good person, humble and never overshare. Don't act like a robot, don't act like a chatbot, act like a simple human being, not an introverted nor extroverted person, just decent being. Use Indonesian language as your main language but if the user question is in English, please answer with English, don't answer with another language beside Indonesian and English. If the user is asking about my profile, give the link in markdown so user can just click it.
-    
-    Context:
-    {context}
-    
-    User question: {message}
-    """
-    
-    response = await asyncio.to_thread(lambda: chat.send_message(prompt))
+    # Call Groq API
+    response = await asyncio.to_thread(
+        lambda: groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=messages,
+            temperature=0.7,
+            max_tokens=1024
+        )
+    )
     
     return {
-        "response": response.text,
+        "response": response.choices[0].message.content,
         "sources": [{
             "_id": str(doc["_id"]),
             "title": doc["title"], 
@@ -193,6 +251,197 @@ async def process_chat(message: str, history: List[Dict[str, str]]):
         } for doc in relevant_docs]
     }
 
+# Helper function untuk hash password
+def hash_password(password: str) -> str:
+    """Hash password menggunakan SHA-256"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+# Helper function untuk generate reset token
+def generate_reset_token() -> str:
+    """Generate random token untuk reset password"""
+    return secrets.token_urlsafe(32)
+
+# Helper function untuk kirim email
+async def send_email(to_email: str, subject: str, body: str):
+    """Kirim email menggunakan SMTP"""
+    try:
+        # Buat pesan email
+        message = MIMEMultipart("alternative")
+        message["From"] = f"{SMTP_SENDER_NAME} <{SMTP_EMAIL}>"
+        message["To"] = to_email
+        message["Subject"] = subject
+        
+        # Tambahkan body HTML
+        html_part = MIMEText(body, "html")
+        message.attach(html_part)
+        
+        # Kirim email
+        await aiosmtplib.send(
+            message,
+            hostname=SMTP_HOST,
+            port=SMTP_PORT,
+            username=SMTP_EMAIL,
+            password=SMTP_PASSWORD,
+            start_tls=True,
+        )
+        return True
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+        return False
+
+# Routes - Authentication
+@app.post("/register")
+async def register_user(user: UserRegister):
+    """Register user baru"""
+    try:
+        # Cek apakah username sudah ada
+        existing_user = await users_collection.find_one({"username": user.username})
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Username sudah digunakan")
+        
+        # Cek apakah email sudah ada
+        existing_email = await users_collection.find_one({"email": user.email})
+        if existing_email:
+            raise HTTPException(status_code=400, detail="Email sudah terdaftar")
+        
+        # Hash password
+        hashed_password = hash_password(user.password)
+        
+        # Simpan user ke database
+        user_doc = {
+            "username": user.username,
+            "email": user.email,
+            "password": hashed_password
+        }
+        
+        result = await users_collection.insert_one(user_doc)
+        
+        return {
+            "message": "Registrasi berhasil",
+            "username": user.username
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/login")
+async def login_user(user: UserLogin):
+    """Login user"""
+    try:
+        # Hash password yang diinput
+        hashed_password = hash_password(user.password)
+        
+        # Cari user di database
+        user_doc = await users_collection.find_one({
+            "username": user.username,
+            "password": hashed_password
+        })
+        
+        if not user_doc:
+            raise HTTPException(status_code=401, detail="Username atau password salah")
+        
+        return {
+            "message": "Login berhasil",
+            "username": user_doc["username"],
+            "email": user_doc.get("email")
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    """Endpoint untuk lupa password - kirim email reset password"""
+    try:
+        # Cek apakah email ada di database
+        user = await users_collection.find_one({"email": request.email})
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="Email tidak ditemukan")
+        
+        # Generate reset token
+        reset_token = generate_reset_token()
+        
+        # Simpan token ke database dengan expiry time (1 jam)
+        from datetime import datetime, timedelta
+        expiry_time = datetime.utcnow() + timedelta(hours=1)
+        
+        await users_collection.update_one(
+            {"email": request.email},
+            {
+                "$set": {
+                    "reset_token": reset_token,
+                    "reset_token_expiry": expiry_time
+                }
+            }
+        )
+        
+        # Buat link reset password (sesuaikan dengan URL frontend Anda)
+        reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
+        
+        # Buat email body
+        email_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background-color: #000; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }}
+                .content {{ background-color: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px; }}
+                .button {{ display: inline-block; padding: 12px 30px; background-color: #000; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+                .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #666; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Reset Password</h1>
+                </div>
+                <div class="content">
+                    <p>Halo,</p>
+                    <p>Kami menerima permintaan untuk reset password akun Anda di <strong>Knowledge Management System</strong>.</p>
+                    <p>Klik tombol di bawah ini untuk reset password Anda:</p>
+                    <p style="text-align: center;">
+                        <a href="{reset_link}" class="button">Reset Password</a>
+                    </p>
+                    <p>Atau copy dan paste link berikut ke browser Anda:</p>
+                    <p style="word-break: break-all; background-color: #fff; padding: 10px; border-radius: 3px;">
+                        {reset_link}
+                    </p>
+                    <p><strong>Link ini akan kadaluarsa dalam 1 jam.</strong></p>
+                    <p>Jika Anda tidak meminta reset password, abaikan email ini.</p>
+                    <p>Terima kasih,<br>Tim Knowledge Management System</p>
+                </div>
+                <div class="footer">
+                    <p>Email ini dikirim secara otomatis, mohon tidak membalas email ini.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Kirim email
+        email_sent = await send_email(
+            to_email=request.email,
+            subject="Reset Password - Knowledge Management System",
+            body=email_body
+        )
+        
+        if not email_sent:
+            raise HTTPException(status_code=500, detail="Gagal mengirim email. Silakan coba lagi.")
+        
+        return {
+            "message": "Link reset password telah dikirim ke email Anda",
+            "email": request.email
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Routes
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
@@ -200,6 +449,62 @@ async def chat_endpoint(request: ChatRequest):
     try:
         result = await process_chat(request.message, request.history)
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/whatsapp-chat", response_model=WhatsAppChatResponse)
+async def whatsapp_chat_endpoint(request: WhatsAppChatRequest):
+    """WhatsApp chat endpoint with conversation history"""
+    try:
+        phone_number = request.phone_number
+        
+        # Get conversation history for this phone number
+        conversation = await conversations_collection.find_one({"phone_number": phone_number})
+        
+        if conversation:
+            history = conversation.get("messages", [])[-10:]  # Keep last 10 messages for context
+        else:
+            history = []
+        
+        # Format history for process_chat
+        formatted_history = []
+        for msg in history:
+            formatted_history.append({
+                "user": msg.get("user", ""),
+                "assistant": msg.get("assistant", "")
+            })
+        
+        # Process chat with RAG
+        result = await process_chat(request.message, formatted_history)
+        ai_response = result["response"]
+        
+        # Save new message to conversation history
+        new_message = {
+            "user": request.message,
+            "assistant": ai_response,
+            "timestamp": asyncio.get_event_loop().time(),
+            "message_id": request.message_id
+        }
+        
+        if conversation:
+            # Update existing conversation
+            await conversations_collection.update_one(
+                {"phone_number": phone_number},
+                {"$push": {"messages": new_message}}
+            )
+        else:
+            # Create new conversation
+            await conversations_collection.insert_one({
+                "phone_number": phone_number,
+                "messages": [new_message],
+                "created_at": asyncio.get_event_loop().time()
+            })
+        
+        return WhatsAppChatResponse(
+            response=ai_response,
+            phone_number=phone_number,
+            sources=result.get("sources", [])
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
