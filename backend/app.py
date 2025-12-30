@@ -209,14 +209,33 @@ async def process_chat(message: str, history: List[Dict[str, str]]):
     messages = []
     
     # System message
-    system_prompt = f"""Kamu adalah asisten virtual yang ramah dan helpful. Jawab dengan gaya percakapan natural seperti manusia, santai tapi sopan.
-Jangan terlalu formal atau kaku. Jangan mengulang informasi yang sudah diberikan sebelumnya.
-Jika tidak tahu jawabannya, akui saja dengan jujur tanpa berbelit-belit.
-Gunakan bahasa Indonesia sebagai bahasa utama, tapi jika user bertanya dalam bahasa Inggris, jawab dalam bahasa Inggris.
-Jangan gunakan bahasa lain selain Indonesia dan Inggris.
+    system_prompt = f"""Kamu adalah SinBot, asisten virtual yang ramah dan helpful dari PT. Sintesa Inti Nusa, perusahaan distributor obat.
 
-Konteks dari knowledge base:
-{context}"""
+SAPAAN:
+- Selalu awali dengan sapaan ramah: "Halo! 👋 Saya SinBot, asisten virtual dari PT. Sintesa Inti Nusa yang siap membantu menjawab pertanyaan kamu. Ada yang bisa SinBot bantu hari ini?"
+
+ATURAN PENTING:
+1. Kamu HANYA boleh menjawab berdasarkan informasi yang ada di "Konteks Knowledge Base" di bawah ini.
+2. Jika pertanyaan user TIDAK ADA atau TIDAK RELEVAN dengan konteks knowledge base, jawab dengan ramah:
+   "Mohon maaf, pertanyaan ini di luar konteks yang bisa SinBot bantu. Silakan hubungi tim customer service kami untuk bantuan lebih lanjut, atau ajukan pertanyaan lain yang berkaitan dengan layanan kami 😊"
+3. JANGAN pernah menjawab menggunakan pengetahuan umum di luar knowledge base.
+4. JANGAN mengarang atau berasumsi informasi yang tidak ada di konteks.
+
+GAYA KOMUNIKASI:
+- Ramah, sopan, dan hangat seperti teman yang membantu
+- Gunakan bahasa yang natural dan tidak kaku
+- Boleh menggunakan emoji secukupnya untuk kesan friendly
+- Jawab dengan ringkas tapi informatif
+- Gunakan bahasa Indonesia, kecuali user bertanya dalam bahasa Inggris maka jawab dalam bahasa Inggris
+
+Konteks Knowledge Base:
+{context}
+
+INFORMASI PEMESANAN:
+- Jika user ingin memesan atau tertarik untuk order, arahkan untuk menghubungi nomor: 0877700292014
+- Contoh: "Untuk pemesanan, silakan hubungi kami di nomor 0877700292014 ya! Tim kami siap membantu 😊"
+
+Ingat: Jika tidak ada informasi yang relevan di konteks di atas, tolak dengan sopan dan arahkan ke customer service."""
     
     messages.append({"role": "system", "content": system_prompt})
     
@@ -265,6 +284,10 @@ def generate_reset_token() -> str:
 async def send_email(to_email: str, subject: str, body: str):
     """Kirim email menggunakan SMTP"""
     try:
+        print(f"[SMTP DEBUG] Attempting to send email to: {to_email}")
+        print(f"[SMTP DEBUG] Using SMTP_HOST: {SMTP_HOST}, PORT: {SMTP_PORT}")
+        print(f"[SMTP DEBUG] From email: {SMTP_EMAIL}")
+        
         # Buat pesan email
         message = MIMEMultipart("alternative")
         message["From"] = f"{SMTP_SENDER_NAME} <{SMTP_EMAIL}>"
@@ -284,9 +307,12 @@ async def send_email(to_email: str, subject: str, body: str):
             password=SMTP_PASSWORD,
             start_tls=True,
         )
+        print(f"[SMTP DEBUG] Email sent successfully!")
         return True
     except Exception as e:
-        print(f"Error sending email: {str(e)}")
+        print(f"[SMTP ERROR] Failed to send email: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return False
 
 # Routes - Authentication
