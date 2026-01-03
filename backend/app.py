@@ -468,6 +468,63 @@ async def forgot_password(request: ForgotPasswordRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+@app.post("/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    """Reset password menggunakan token dari email"""
+    try:
+        from datetime import datetime
+        
+        # Cari user dengan token yang valid
+        user = await users_collection.find_one({
+            "reset_token": request.token,
+            "reset_token_expiry": {"$gt": datetime.utcnow()}
+        })
+        
+        if not user:
+            raise HTTPException(status_code=400, detail="Token tidak valid atau sudah kadaluarsa")
+        
+        # Hash password baru
+        hashed_password = hash_password(request.new_password)
+        
+        # Update password dan hapus token
+        await users_collection.update_one(
+            {"_id": user["_id"]},
+            {
+                "$set": {"password": hashed_password},
+                "$unset": {"reset_token": "", "reset_token_expiry": ""}
+            }
+        )
+        
+        return {"message": "Password berhasil direset. Silakan login dengan password baru."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/verify-reset-token/{token}")
+async def verify_reset_token(token: str):
+    """Verifikasi apakah reset token masih valid"""
+    try:
+        from datetime import datetime
+        
+        user = await users_collection.find_one({
+            "reset_token": token,
+            "reset_token_expiry": {"$gt": datetime.utcnow()}
+        })
+        
+        if not user:
+            raise HTTPException(status_code=400, detail="Token tidak valid atau sudah kadaluarsa")
+        
+        return {"valid": True, "email": user.get("email")}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Routes
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
@@ -709,82 +766,103 @@ async def extract_text_from_pdf(file_content: bytes) -> tuple[str, str]:
         raise HTTPException(status_code=400, detail=f"Error processing PDF: {str(e)}")
 
 async def process_excel_file(file_content: bytes, filename: str) -> List[Dict[str, Any]]:
-    """Process Excel file and return list of knowledge items"""
+    """Process Excel file and return list of knowledge items - combines all rows into 1 item"""
     try:
         # Read Excel file
         excel_file = io.BytesIO(file_content)
         df = pd.read_excel(excel_file)
         
-        knowledge_items = []
+        # Combine all rows into a single content string
+        all_content_parts = []
+        columns = list(df.columns)
         
-        # Convert each row to knowledge item
+        # Add header info
+        all_content_parts.append(f"=== Data dari file: {filename} ===")
+        all_content_parts.append(f"Total baris: {len(df)}")
+        all_content_parts.append(f"Kolom: {', '.join(columns)}")
+        all_content_parts.append("")
+        
+        # Process each row
         for index, row in df.iterrows():
-            # Create content from all columns
-            content_parts = []
+            row_parts = []
             for col, value in row.items():
                 if pd.notna(value):
-                    content_parts.append(f"{col}: {value}")
+                    row_parts.append(f"{col}: {value}")
             
-            content = "\n".join(content_parts)
-            title = f"{filename} - Row {index + 1}"
-            
-            # Try to use first column as title if it looks like a title
-            first_col_value = row.iloc[0] if len(row) > 0 and pd.notna(row.iloc[0]) else None
-            if first_col_value and len(str(first_col_value)) < 100:
-                title = str(first_col_value)
-            
-            knowledge_items.append({
-                "title": title,
-                "content": content,
-                "source": filename,
-                "metadata": {
-                    "file_type": "excel",
-                    "filename": filename,
-                    "row_index": index + 1,
-                    "columns": list(df.columns)
-                }
-            })
+            if row_parts:
+                all_content_parts.append(f"[Item {index + 1}]")
+                all_content_parts.append("\n".join(row_parts))
+                all_content_parts.append("")
+        
+        content = "\n".join(all_content_parts)
+        title = Path(filename).stem  # Use filename without extension as title
+        
+        # Return as single knowledge item
+        knowledge_items = [{
+            "title": title,
+            "content": content,
+            "source": filename,
+            "metadata": {
+                "file_type": "excel",
+                "filename": filename,
+                "total_rows": len(df),
+                "columns": columns
+            }
+        }]
         
         return knowledge_items
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error processing Excel file: {str(e)}")
 
+
 async def process_csv_file(file_content: bytes, filename: str) -> List[Dict[str, Any]]:
-    """Process CSV file and return list of knowledge items"""
+    """Process CSV file and return list of knowledge items - combines all rows into 1 item"""
     try:
         # Read CSV file
         csv_text = file_content.decode('utf-8')
         csv_file = io.StringIO(csv_text)
         csv_reader = csv.DictReader(csv_file)
         
-        knowledge_items = []
+        # Get all rows
+        rows = list(csv_reader)
+        columns = rows[0].keys() if rows else []
         
-        for index, row in enumerate(csv_reader):
-            # Create content from all columns
-            content_parts = []
+        # Combine all rows into a single content string
+        all_content_parts = []
+        
+        # Add header info
+        all_content_parts.append(f"=== Data dari file: {filename} ===")
+        all_content_parts.append(f"Total baris: {len(rows)}")
+        all_content_parts.append(f"Kolom: {', '.join(columns)}")
+        all_content_parts.append("")
+        
+        # Process each row
+        for index, row in enumerate(rows):
+            row_parts = []
             for key, value in row.items():
                 if value and value.strip():
-                    content_parts.append(f"{key}: {value}")
+                    row_parts.append(f"{key}: {value}")
             
-            content = "\n".join(content_parts)
-            title = f"{filename} - Row {index + 1}"
-            
-            # Try to use first column as title if it looks like a title
-            first_value = list(row.values())[0] if row.values() else None
-            if first_value and len(first_value) < 100:
-                title = first_value
-            
-            knowledge_items.append({
-                "title": title,
-                "content": content,
-                "source": filename,
-                "metadata": {
-                    "file_type": "csv",
-                    "filename": filename,
-                    "row_index": index + 1,
-                    "columns": list(row.keys())
-                }
-            })
+            if row_parts:
+                all_content_parts.append(f"[Item {index + 1}]")
+                all_content_parts.append("\n".join(row_parts))
+                all_content_parts.append("")
+        
+        content = "\n".join(all_content_parts)
+        title = Path(filename).stem  # Use filename without extension as title
+        
+        # Return as single knowledge item
+        knowledge_items = [{
+            "title": title,
+            "content": content,
+            "source": filename,
+            "metadata": {
+                "file_type": "csv",
+                "filename": filename,
+                "total_rows": len(rows),
+                "columns": list(columns)
+            }
+        }]
         
         return knowledge_items
     except Exception as e:

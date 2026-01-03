@@ -42,7 +42,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister, onSwitchToForgotPassw
               <LogIn className="w-8 h-8 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Selamat Datang</CardTitle>
+          <CardTitle className="text-2xl font-bold">Selamat Datang Admin SinBot</CardTitle>
           <CardDescription>
             Masuk ke Knowledge Management System
           </CardDescription>
