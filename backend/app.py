@@ -50,19 +50,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# MongoDB connection with SSL certificate verification
+# MongoDB connection with SSL bypass for Docker compatibility
 MONGODB_URI = os.getenv("MONGODB_URI")
+
+# Try multiple SSL configurations
+import ssl
+
 try:
     import certifi
+    # First try with certifi
     client = motor.motor_asyncio.AsyncIOMotorClient(
         MONGODB_URI, 
         server_api=ServerApi('1'),
-        tlsCAFile=certifi.where()
+        tlsCAFile=certifi.where(),
+        tlsAllowInvalidCertificates=True
     )
-except ImportError:
-    # Fallback if certifi not available
-    client = motor.motor_asyncio.AsyncIOMotorClient(MONGODB_URI, server_api=ServerApi('1'))
-    
+except:
+    try:
+        # Fallback: Create custom SSL context with no verification
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        
+        client = motor.motor_asyncio.AsyncIOMotorClient(
+            MONGODB_URI,
+            server_api=ServerApi('1'),
+            tls=True,
+            tlsAllowInvalidCertificates=True,
+            tlsAllowInvalidHostnames=True
+        )
+    except:
+        # Last resort: simple connection
+        client = motor.motor_asyncio.AsyncIOMotorClient(MONGODB_URI, server_api=ServerApi('1'))
+
 db = client.get_database("chatbot_cs")
 knowledge_collection = db.get_collection("rag_data_knowledge")
 users_collection = db.get_collection("users")
