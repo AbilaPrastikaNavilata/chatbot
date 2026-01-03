@@ -12,3 +12,4 @@ python-multipart
 openpyxl
 aiosmtplib
 email-validator
+certifi

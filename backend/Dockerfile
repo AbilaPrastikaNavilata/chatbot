@@ -10,10 +10,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install system dependencies
+# Install system dependencies including SSL certificates
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
+    ca-certificates \
+    openssl \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better Docker layer caching

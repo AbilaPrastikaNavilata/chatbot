@@ -50,9 +50,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# MongoDB connection
+# MongoDB connection with SSL certificate verification
 MONGODB_URI = os.getenv("MONGODB_URI")
-client = motor.motor_asyncio.AsyncIOMotorClient(MONGODB_URI, server_api=ServerApi('1'))
+try:
+    import certifi
+    client = motor.motor_asyncio.AsyncIOMotorClient(
+        MONGODB_URI, 
+        server_api=ServerApi('1'),
+        tlsCAFile=certifi.where()
+    )
+except ImportError:
+    # Fallback if certifi not available
+    client = motor.motor_asyncio.AsyncIOMotorClient(MONGODB_URI, server_api=ServerApi('1'))
+    
 db = client.get_database("chatbot_cs")
 knowledge_collection = db.get_collection("rag_data_knowledge")
 users_collection = db.get_collection("users")
