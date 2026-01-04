@@ -1,5 +1,5 @@
-# Use Python 3.11 slim image for better performance and smaller size
-FROM python:3.11-slim
+# Use Python 3.12 bookworm for latest OpenSSL (MongoDB Atlas TLS compatibility)
+FROM python:3.12-slim-bookworm
 
 # Set working directory
 WORKDIR /app
