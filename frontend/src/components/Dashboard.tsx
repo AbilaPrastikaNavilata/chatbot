@@ -23,16 +23,16 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8 flex justify-between items-start">
+        <div className="mb-6 md:mb-8 flex flex-col sm:flex-row justify-between items-start gap-4">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground mb-2">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-foreground mb-1 md:mb-2">
               Knowledge Management System
             </h1>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground">
               Manage and organize your team's knowledge base
             </p>
             {user && (
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                 Selamat datang, <span className="font-medium">{user.username}</span>
               </p>
             )}
@@ -40,7 +40,7 @@ function Dashboard() {
           <Button
             variant="outline"
             onClick={logout}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 w-full sm:w-auto justify-center"
           >
             <LogOut className="w-4 h-4" />
             Keluar
@@ -48,18 +48,18 @@ function Dashboard() {
         </div>
 
         <Tabs defaultValue="view" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
-            <TabsTrigger value="view" className="text-sm font-medium">
-              View Knowledge
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-6 md:mb-8 h-auto gap-1">
+            <TabsTrigger value="view" className="text-xs sm:text-sm font-medium py-2">
+              View
             </TabsTrigger>
-            <TabsTrigger value="chat" className="text-sm font-medium">
+            <TabsTrigger value="chat" className="text-xs sm:text-sm font-medium py-2">
               Chat
             </TabsTrigger>
-            <TabsTrigger value="upload" className="text-sm font-medium">
-              Upload File
+            <TabsTrigger value="upload" className="text-xs sm:text-sm font-medium py-2">
+              Upload
             </TabsTrigger>
-            <TabsTrigger value="add" className="text-sm font-medium">
-              Add Knowledge
+            <TabsTrigger value="add" className="text-xs sm:text-sm font-medium py-2">
+              Add
             </TabsTrigger>
           </TabsList>
 

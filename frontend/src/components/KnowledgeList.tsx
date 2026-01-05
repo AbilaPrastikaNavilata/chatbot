@@ -3,15 +3,15 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from '@/components/ui/dialog';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -20,15 +20,15 @@ import {
 } from '@/components/ui/select';
 import { type Knowledge, type UpdateKnowledgeRequest, type PaginatedKnowledgeResponse } from '@/types/knowledge';
 import { KnowledgeModal } from '@/components/KnowledgeModal';
-import { 
-  Eye, 
-  Trash2, 
-  FileText, 
-  Hash, 
-  ArrowUpDown, 
-  Trash, 
-  CheckSquare, 
-  Square, 
+import {
+  Eye,
+  Trash2,
+  FileText,
+  Hash,
+  ArrowUpDown,
+  Trash,
+  CheckSquare,
+  Square,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -59,7 +59,7 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
     isOpen: false,
     type: 'single'
   });
-  
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -80,15 +80,15 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
         limit: itemsPerPage.toString(),
         sort_order: sortOrder
       });
-      
+
       const response = await fetch(`${import.meta.env.VITE_BACKEND_BASE_URL}/knowledge?${params}`);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data: PaginatedKnowledgeResponse = await response.json();
-      
+
       setKnowledge(data.items || []);
       setTotalPages(data.total_pages);
       setTotalItems(data.total);
@@ -136,7 +136,7 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
       }
 
       await fetchKnowledge();
-      
+
       if (selectedKnowledge && selectedKnowledge._id === id) {
         const updatedItem = knowledge.find(item => item._id === id);
         if (updatedItem) {
@@ -193,7 +193,7 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
       // Refresh the knowledge list after deletion
       await fetchKnowledge();
       onRefresh?.();
-      
+
       // Reset selection states
       setSelectedIds(new Set());
       setIsSelectionMode(false);
@@ -329,10 +329,10 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
     <>
       <div className="space-y-4">
         {/* Header dengan kontrol */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold tracking-tight">Knowledge Base</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Knowledge Base</h2>
           <div className="flex items-center gap-4">
-            <div className="text-sm text-muted-foreground">
+            <div className="text-xs sm:text-sm text-muted-foreground">
               {totalItems} item{totalItems !== 1 ? 's' : ''}
               {isSelectionMode && selectedIds.size > 0 && (
                 <span className="ml-2 text-primary">
@@ -345,11 +345,11 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
 
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
             <div className="flex items-center gap-2">
               <ArrowUpDown className="w-4 h-4" />
               <Select value={sortOrder} onValueChange={handleSortChange}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-32 sm:w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -358,9 +358,9 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
                 </SelectContent>
               </Select>
             </div>
-            
-            <div className="text-sm text-gray-500">
-              Menampilkan {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalItems)} dari {totalItems} item
+
+            <div className="text-xs sm:text-sm text-gray-500">
+              <span className="hidden sm:inline">Menampilkan </span>{((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalItems)}<span className="hidden sm:inline"> dari {totalItems} item</span>
             </div>
           </div>
 
@@ -404,7 +404,7 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
                   )}
                   {selectedIds.size === knowledge.length ? 'Batal Pilih Semua' : 'Pilih Semua'}
                 </Button>
-                
+
                 {selectedIds.size > 0 && (
                   <Button
                     variant="destructive"
@@ -416,7 +416,7 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
                     Hapus Terpilih ({selectedIds.size})
                   </Button>
                 )}
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -435,11 +435,10 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
         {/* Knowledge Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {knowledge.map((item) => (
-            <Card 
-              key={item._id} 
-              className={`cursor-pointer hover:shadow-md transition-shadow group ${
-                selectedIds.has(item._id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''
-              }`}
+            <Card
+              key={item._id}
+              className={`cursor-pointer hover:shadow-md transition-shadow group ${selectedIds.has(item._id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+                }`}
               onClick={() => handleView(item)}
             >
               <CardHeader>
@@ -456,7 +455,7 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
                     )}
                     <span className="line-clamp-2 flex-1">{item.title}</span>
                   </div>
-                  
+
                   {/* Action buttons (hanya muncul saat tidak dalam selection mode) */}
                   {!isSelectionMode && (
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -492,7 +491,7 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
                 <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
                   {item.content}
                 </p>
-                
+
                 <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
                   <div className="flex items-center gap-1">
                     <FileText className="h-3 w-3" />
@@ -503,7 +502,7 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
                     {getContentSize(item.content)}
                   </div>
                 </div>
-                
+
                 {item.metadata && Object.keys(item.metadata).length > 0 && (
                   <div className="space-y-2 mb-3">
                     <div className="text-xs font-medium text-muted-foreground">Metadata:</div>
@@ -524,7 +523,7 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
                     </div>
                   </div>
                 )}
-                
+
                 <div className="text-xs text-muted-foreground">
                   ID: {item._id}
                 </div>
@@ -535,23 +534,23 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
 
         {/* Pagination Controls */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-6">
-            <div className="text-sm text-gray-500">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+            <div className="text-xs sm:text-sm text-gray-500">
               Halaman {currentPage} dari {totalPages}
             </div>
-            
-            <div className="flex items-center gap-2">
+
+            <div className="flex items-center gap-1 sm:gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={!hasPrev}
-                className="flex items-center gap-1"
+                className="flex items-center gap-1 text-xs sm:text-sm px-2 sm:px-3"
               >
                 <ChevronLeft className="w-4 h-4" />
-                Sebelumnya
+                <span className="hidden sm:inline">Sebelumnya</span>
               </Button>
-              
+
               {/* Page numbers */}
               <div className="flex items-center gap-1">
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -565,29 +564,29 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
                   } else {
                     pageNum = currentPage - 2 + i;
                   }
-                  
+
                   return (
                     <Button
                       key={pageNum}
                       variant={currentPage === pageNum ? "default" : "outline"}
                       size="sm"
                       onClick={() => handlePageChange(pageNum)}
-                      className="w-8 h-8 p-0"
+                      className="w-7 h-7 sm:w-8 sm:h-8 p-0 text-xs sm:text-sm"
                     >
                       {pageNum}
                     </Button>
                   );
                 })}
               </div>
-              
+
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={!hasNext}
-                className="flex items-center gap-1"
+                className="flex items-center gap-1 text-xs sm:text-sm px-2 sm:px-3"
               >
-                Selanjutnya
+                <span className="hidden sm:inline">Selanjutnya</span>
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
@@ -634,4 +633,3 @@ export function KnowledgeList({ onRefresh }: KnowledgeListProps) {
   );
 }
 
- 
