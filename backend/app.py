@@ -170,7 +170,7 @@ async def add_knowledge(knowledge: KnowledgeItem):
     result = await knowledge_collection.insert_one(document)
     return result.inserted_id
 
-async def search_similar_documents(query: str, limit: int = 5):
+async def search_similar_documents(query: str, limit: int = 3):  # Reduced from 5 to 3 for context length
     """Search for similar documents by computing similarity in the application"""
     query_embedding = await generate_embedding(query)
     
@@ -232,8 +232,22 @@ async def process_chat(message: str, history: List[Dict[str, str]]):
     # Search for relevant context
     relevant_docs = await search_similar_documents(message)
     
-    # Format context for the model
-    context = "\n\n".join([f"Title: {doc['title']}\nContent: {doc['content']}" for doc in relevant_docs])
+    # Format context for the model with STRICT length limit (Groq has 12k token limit)
+    max_content_length = 500   # Limit each doc to 500 chars (was 2000)
+    max_total_context = 2000   # Limit total context to 2000 chars (was 8000)
+    
+    context_parts = []
+    total_length = 0
+    
+    for doc in relevant_docs:
+        content = doc['content'][:max_content_length] if len(doc['content']) > max_content_length else doc['content']
+        doc_text = f"Title: {doc['title']}\nContent: {content}"
+        if total_length + len(doc_text) > max_total_context:
+            break
+        context_parts.append(doc_text)
+        total_length += len(doc_text)
+    
+    context = "\n\n".join(context_parts)
     
     # Format conversation history for Groq (OpenAI format)
     messages = []
