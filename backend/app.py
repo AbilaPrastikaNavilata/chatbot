@@ -1,5 +1,5 @@
 # Tambahkan import ini di bagian atas
-from fastapi import FastAPI, HTTPException, File, UploadFile, Form
+from fastapi import FastAPI, HTTPException, File, UploadFile
 import hashlib
 import aiosmtplib
 from email.mime.text import MIMEText
@@ -13,7 +13,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import secrets
-import pandas as pd
+
 import PyPDF2
 from pathlib import Path
 import io
@@ -22,7 +22,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import os
 import json
-import csv
+
 from groq import Groq
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
@@ -170,7 +170,7 @@ async def add_knowledge(knowledge: KnowledgeItem):
     result = await knowledge_collection.insert_one(document)
     return result.inserted_id
 
-async def search_similar_documents(query: str, limit: int = 3):  # Reduced from 5 to 3 for context length
+async def search_similar_documents(query: str, limit: int = 5):
     """Search for similar documents by computing similarity in the application"""
     query_embedding = await generate_embedding(query)
     
@@ -232,22 +232,8 @@ async def process_chat(message: str, history: List[Dict[str, str]]):
     # Search for relevant context
     relevant_docs = await search_similar_documents(message)
     
-    # Format context for the model with STRICT length limit (Groq has 12k token limit)
-    max_content_length = 500   # Limit each doc to 500 chars (was 2000)
-    max_total_context = 2000   # Limit total context to 2000 chars (was 8000)
-    
-    context_parts = []
-    total_length = 0
-    
-    for doc in relevant_docs:
-        content = doc['content'][:max_content_length] if len(doc['content']) > max_content_length else doc['content']
-        doc_text = f"Title: {doc['title']}\nContent: {content}"
-        if total_length + len(doc_text) > max_total_context:
-            break
-        context_parts.append(doc_text)
-        total_length += len(doc_text)
-    
-    context = "\n\n".join(context_parts)
+    # Format context for the model
+    context = "\n\n".join([f"Title: {doc['title']}\nContent: {doc['content']}" for doc in relevant_docs])
     
     # Format conversation history for Groq (OpenAI format)
     messages = []
@@ -809,108 +795,6 @@ async def extract_text_from_pdf(file_content: bytes) -> tuple[str, str]:
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error processing PDF: {str(e)}")
 
-async def process_excel_file(file_content: bytes, filename: str) -> List[Dict[str, Any]]:
-    """Process Excel file and return list of knowledge items - combines all rows into 1 item"""
-    try:
-        # Read Excel file
-        excel_file = io.BytesIO(file_content)
-        df = pd.read_excel(excel_file)
-        
-        # Combine all rows into a single content string
-        all_content_parts = []
-        columns = list(df.columns)
-        
-        # Add header info
-        all_content_parts.append(f"=== Data dari file: {filename} ===")
-        all_content_parts.append(f"Total baris: {len(df)}")
-        all_content_parts.append(f"Kolom: {', '.join(columns)}")
-        all_content_parts.append("")
-        
-        # Process each row
-        for index, row in df.iterrows():
-            row_parts = []
-            for col, value in row.items():
-                if pd.notna(value):
-                    row_parts.append(f"{col}: {value}")
-            
-            if row_parts:
-                all_content_parts.append(f"[Item {index + 1}]")
-                all_content_parts.append("\n".join(row_parts))
-                all_content_parts.append("")
-        
-        content = "\n".join(all_content_parts)
-        title = Path(filename).stem  # Use filename without extension as title
-        
-        # Return as single knowledge item
-        knowledge_items = [{
-            "title": title,
-            "content": content,
-            "source": filename,
-            "metadata": {
-                "file_type": "excel",
-                "filename": filename,
-                "total_rows": len(df),
-                "columns": columns
-            }
-        }]
-        
-        return knowledge_items
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error processing Excel file: {str(e)}")
-
-
-async def process_csv_file(file_content: bytes, filename: str) -> List[Dict[str, Any]]:
-    """Process CSV file and return list of knowledge items - combines all rows into 1 item"""
-    try:
-        # Read CSV file
-        csv_text = file_content.decode('utf-8')
-        csv_file = io.StringIO(csv_text)
-        csv_reader = csv.DictReader(csv_file)
-        
-        # Get all rows
-        rows = list(csv_reader)
-        columns = rows[0].keys() if rows else []
-        
-        # Combine all rows into a single content string
-        all_content_parts = []
-        
-        # Add header info
-        all_content_parts.append(f"=== Data dari file: {filename} ===")
-        all_content_parts.append(f"Total baris: {len(rows)}")
-        all_content_parts.append(f"Kolom: {', '.join(columns)}")
-        all_content_parts.append("")
-        
-        # Process each row
-        for index, row in enumerate(rows):
-            row_parts = []
-            for key, value in row.items():
-                if value and value.strip():
-                    row_parts.append(f"{key}: {value}")
-            
-            if row_parts:
-                all_content_parts.append(f"[Item {index + 1}]")
-                all_content_parts.append("\n".join(row_parts))
-                all_content_parts.append("")
-        
-        content = "\n".join(all_content_parts)
-        title = Path(filename).stem  # Use filename without extension as title
-        
-        # Return as single knowledge item
-        knowledge_items = [{
-            "title": title,
-            "content": content,
-            "source": filename,
-            "metadata": {
-                "file_type": "csv",
-                "filename": filename,
-                "total_rows": len(rows),
-                "columns": list(columns)
-            }
-        }]
-        
-        return knowledge_items
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error processing CSV file: {str(e)}")
 
 # File Upload Endpoints
 @app.post("/upload-file")
@@ -973,131 +857,15 @@ async def upload_file(file: UploadFile = File(...)):
                 "items_created": 1
             }
         
-        elif file_extension in ['.xlsx', '.xls']:
-            # Process Excel
-            knowledge_items = await process_excel_file(file_content, filename)
-            
-            for item in knowledge_items:
-                knowledge = KnowledgeItem(**item)
-                result = await add_knowledge(knowledge)
-                results.append(str(result))
-            
-            return {
-                "message": f"Excel file processed successfully",
-                "ids": results,
-                "items_created": len(results)
-            }
-        
-        elif file_extension == '.csv':
-            # Process CSV
-            knowledge_items = await process_csv_file(file_content, filename)
-            
-            for item in knowledge_items:
-                knowledge = KnowledgeItem(**item)
-                result = await add_knowledge(knowledge)
-                results.append(str(result))
-            
-            return {
-                "message": f"CSV file processed successfully",
-                "ids": results,
-                "items_created": len(results)
-            }
-        
         else:
             raise HTTPException(
                 status_code=400, 
-                detail=f"Unsupported file type: {file_extension}. Supported types: .pdf, .txt, .xlsx, .xls, .csv"
+                detail=f"Unsupported file type: {file_extension}. Supported types: .pdf, .txt"
             )
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Endpoint untuk upload dengan opsi kustomisasi
-@app.post("/upload-csv-custom")
-async def upload_csv_custom(
-    file: UploadFile = File(...),
-    title_column: str = Form(...),
-    content_column: str = Form(...)
-):
-    """Upload CSV with custom column mapping"""
-    try:
-        file_content = await file.read()
-        csv_text = file_content.decode('utf-8')
-        csv_file = io.StringIO(csv_text)
-        csv_reader = csv.DictReader(csv_file)
-        
-        results = []
-        for row in csv_reader:
-            if title_column in row and content_column in row:
-                knowledge = KnowledgeItem(
-                    title=row[title_column],
-                    content=row[content_column],
-                    source=file.filename,
-                    metadata={
-                        "file_type": "csv_custom",
-                        "filename": file.filename,
-                        "title_column": title_column,
-                        "content_column": content_column,
-                        "row_data": row
-                    }
-                )
-                result = await add_knowledge(knowledge)
-                results.append(str(result))
-        
-        return {
-            "message": f"CSV file processed with custom mapping",
-            "ids": results,
-            "items_created": len(results)
-        }
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/upload-excel-custom")
-async def upload_excel_custom(
-    file: UploadFile = File(...),
-    title_column: str = Form(...),
-    content_column: str = Form(...)
-):
-    """Upload Excel with custom column mapping"""
-    try:
-        file_content = await file.read()
-        excel_file = io.BytesIO(file_content)
-        df = pd.read_excel(excel_file)
-        
-        if title_column not in df.columns or content_column not in df.columns:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Columns '{title_column}' or '{content_column}' not found in Excel file"
-            )
-        
-        results = []
-        for index, row in df.iterrows():
-            if pd.notna(row[title_column]) and pd.notna(row[content_column]):
-                knowledge = KnowledgeItem(
-                    title=str(row[title_column]),
-                    content=str(row[content_column]),
-                    source=file.filename,
-                    metadata={
-                        "file_type": "excel_custom",
-                        "filename": file.filename,
-                        "title_column": title_column,
-                        "content_column": content_column,
-                        "row_index": index + 1,
-                        "row_data": row.to_dict()
-                    }
-                )
-                result = await add_knowledge(knowledge)
-                results.append(str(result))
-        
-        return {
-            "message": f"Excel file processed with custom mapping",
-            "ids": results,
-            "items_created": len(results)
-        }
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 # Run the app
 if __name__ == "__main__":

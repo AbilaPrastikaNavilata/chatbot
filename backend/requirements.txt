@@ -7,10 +7,8 @@ dnspython>=2.4.0
 sentence-transformers
 huggingface_hub
 groq
-pandas
 PyPDF2
 python-multipart
-openpyxl
 aiosmtplib
 email-validator
 certifi
