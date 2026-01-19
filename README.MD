@@ -62,6 +62,16 @@ Dokumentasi lengkap mengenai arsitektur, integrasi WhatsApp, dan cara deployment
 
 ---
 
+🧠 Apa itu Proses Embedding?
+Hosting AI itu tidak "membaca" teks seperti manusia. AI membaca Angka. Embedding adalah proses mengubah teks (kata/kalimat) menjadi deretan angka (vektor).
+
+Bayangkan sebuah Peta: Setiap kalimat diberi "lokasi" (koordinat) di peta raksasa. Kalimat yang maknanya mirip (contoh: "Obat batuk" dan "Sirup batuk") akan memiliki lokasi koordinat yang berdekatan.
+Kodenya di mana? Cek di backend/app.py:
+model = SentenceTransformer(...): Ini "penerjemah" teks ke angka.
+generate_embedding(text): Fungsi yang melakukan proses ubah teks -> angka.
+search_similar_documents(query): Proses mencari data di database yang lokasinya paling dekat dengan pertanyaan user
+
+
 ## 🛡️ Lisensi
 Project ini dikembangkan untuk keperluan Skripsi.
 SinBot © 2026.
