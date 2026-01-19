@@ -1,0 +1,275 @@
+# 📚 Panduan Presentasi Project SinBot Chatbot
+
+## 🎯 Ringkasan Project
+
+**SinBot** adalah chatbot berbasis **RAG (Retrieval-Augmented Generation)** untuk PT. Sintesa Inti Nusa (distributor obat). Chatbot ini bisa:
+- Menjawab pertanyaan berdasarkan knowledge base
+- Terintegrasi dengan WhatsApp
+- Dikelola melalui web admin
+
+---
+
+## 🏗️ Arsitektur Sistem
+
+```mermaid
+flowchart TB
+    subgraph Frontend["🖥️ Frontend (React + Vite)"]
+        Login[Login Page]
+        Dashboard[Dashboard]
+        Chat[Chat Interface]
+        Knowledge[Knowledge Management]
+    end
+    
+    subgraph Backend["⚙️ Backend (FastAPI + Python)"]
+        API[REST API]
+        RAG[RAG Engine]
+        Embed[Sentence Transformer]
+    end
+    
+    subgraph External["☁️ External Services"]
+        MongoDB[(MongoDB Atlas)]
+        Groq[Groq API - LLaMA 3.3]
+        WAHA[WAHA - WhatsApp]
+        N8N[n8n Automation]
+    end
+    
+    Frontend --> Backend
+    Backend --> MongoDB
+    Backend --> Groq
+    WAHA --> N8N --> Backend
+```
+
+---
+
+## 📁 Struktur Folder Project
+
+```
+Chatbot/
+├── backend/                 # 🐍 Server Python
+│   ├── app.py              # File utama API
+│   ├── requirements.txt    # Daftar library Python
+│   ├── Dockerfile          # Untuk membuat container
+│   ├── docker-compose.yml  # Untuk jalankan di VPS
+│   └── .env                # Konfigurasi rahasia (API keys)
+│
+├── frontend/               # ⚛️ Aplikasi React
+│   ├── src/
+│   │   ├── components/     # Komponen UI
+│   │   │   ├── Login.tsx           # Halaman login
+│   │   │   ├── Chat.tsx            # Interface chat
+│   │   │   ├── KnowledgeList.tsx   # Daftar knowledge
+│   │   │   ├── FileUpload.tsx      # Upload PDF/TXT
+│   │   │   └── ...
+│   │   ├── contexts/       # State management
+│   │   └── App.tsx         # Komponen utama
+│   └── .env                # URL backend
+```
+
+---
+
+## 🔧 Penjelasan Komponen
+
+### Backend ([app.py](file:///d:/Smt%207/Skripis/Chatbot/backend/app.py))
+
+| Bagian | Fungsi | Baris |
+|--------|--------|-------|
+| **Imports** | Import library yang dibutuhkan | 1-36 |
+| **MongoDB Connection** | Koneksi ke database cloud | 54-89 |
+| **Embedding Model** | Model AI untuk ubah teks jadi vektor | 92 |
+| **Groq Client** | Koneksi ke LLaMA 3.3 | 95-96 |
+| **[generate_embedding()](file:///d:/Smt%207/Skripis/Chatbot/backend/app.py#155-159)** | Fungsi bikin embedding dari teks | 155-158 |
+| **[search_similar_documents()](file:///d:/Smt%207/Skripis/Chatbot/backend/app.py#173-209)** | Cari dokumen mirip dengan pertanyaan | 173-208 |
+| **[process_chat()](file:///d:/Smt%207/Skripis/Chatbot/backend/app.py#230-302)** | Proses chat dengan RAG | 230-315 |
+| **`/login`** | Endpoint untuk login user | 398-422 |
+| **`/register`** | Endpoint untuk daftar user baru | 363-396 |
+| **`/chat`** | Endpoint utama chat | 573-580 |
+| **`/whatsapp-chat`** | Endpoint khusus WhatsApp | 582-636 |
+| **`/upload-file`** | Upload PDF/TXT ke knowledge | 798-867 |
+| **`/knowledge`** | CRUD knowledge items | 653-777 |
+
+### Frontend Components
+
+| File | Fungsi |
+|------|--------|
+| [Login.tsx](file:///d:/Smt%207/Skripis/Chatbot/frontend/src/components/Login.tsx) | Form login admin |
+| [Chat.tsx](file:///d:/Smt%207/Skripis/Chatbot/frontend/src/components/Chat.tsx) | Interface chat dengan SinBot |
+| [KnowledgeList.tsx](file:///d:/Smt%207/Skripis/Chatbot/frontend/src/components/KnowledgeList.tsx) | Tabel daftar knowledge + edit/hapus |
+| [FileUpload.tsx](file:///d:/Smt%207/Skripis/Chatbot/frontend/src/components/FileUpload.tsx) | Upload file PDF/TXT |
+| [AddKnowledge.tsx](file:///d:/Smt%207/Skripis/Chatbot/frontend/src/components/AddKnowledge.tsx) | Form tambah knowledge manual |
+
+---
+
+## 🧠 Cara Kerja RAG (Retrieval-Augmented Generation)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant B as Backend
+    participant E as Embedding Model
+    participant DB as MongoDB
+    participant AI as Groq (LLaMA)
+    
+    U->>B: "Apa harga obat X?"
+    B->>E: Ubah pertanyaan jadi vektor
+    E-->>B: [0.23, -0.45, 0.12, ...]
+    B->>DB: Cari dokumen dengan vektor mirip
+    DB-->>B: 3 dokumen paling relevan
+    B->>AI: Kirim pertanyaan + konteks dokumen
+    AI-->>B: "Harga obat X adalah Rp..."
+    B-->>U: Tampilkan jawaban
+```
+
+**Langkah-langkah:**
+1. **User bertanya** → "Apa harga obat X?"
+2. **Embedding** → Pertanyaan diubah jadi vektor angka
+3. **Search** → Cari dokumen di database yang mirip (cosine similarity)
+4. **Context** → Dokumen relevan dijadikan konteks
+5. **LLM** → Groq/LLaMA menjawab berdasarkan konteks
+6. **Response** → Jawaban dikirim ke user
+
+---
+
+## 🌐 Alur Deployment ke VPS
+
+### 1. Persiapan VPS
+```bash
+# Install Docker
+sudo apt update
+sudo apt install docker.io docker-compose
+```
+
+### 2. Clone Repository
+```bash
+git clone https://github.com/AbilaPrastikaNavilata/chatbot.git
+cd chatbot/backend
+```
+
+### 3. Setup Environment
+```bash
+# Edit file .env dengan API keys
+nano .env
+```
+
+### 4. Jalankan dengan Docker
+```bash
+docker-compose up -d --build
+```
+
+### 5. Setup Nginx (Reverse Proxy)
+```nginx
+server {
+    server_name yourdomain.com;
+    
+    location /api/ {
+        proxy_pass http://localhost:7860/;
+    }
+    
+    location / {
+        root /var/www/frontend;
+        try_files $uri /index.html;
+    }
+}
+```
+
+### 6. SSL Certificate
+```bash
+sudo certbot --nginx -d yourdomain.com
+```
+
+---
+
+## 📱 Integrasi WhatsApp (WAHA + n8n)
+
+```mermaid
+flowchart LR
+    WA[WhatsApp User] --> WAHA[WAHA Container]
+    WAHA --> N8N[n8n Workflow]
+    N8N --> API[Backend /whatsapp-chat]
+    API --> N8N
+    N8N --> WAHA
+    WAHA --> WA
+```
+
+**Komponen:**
+1. **WAHA** - WhatsApp HTTP API (container Docker)
+2. **n8n** - Automation tool untuk routing pesan
+3. **Backend** - Endpoint `/whatsapp-chat` untuk proses chat
+
+**Alur:**
+1. User kirim pesan ke nomor WhatsApp
+2. WAHA terima pesan, trigger webhook ke n8n
+3. n8n kirim request ke backend `/whatsapp-chat`
+4. Backend proses dengan RAG, return jawaban
+5. n8n kirim jawaban kembali ke WAHA
+6. WAHA kirim reply ke WhatsApp user
+
+---
+
+## 🔐 Fitur Autentikasi
+
+| Fitur | Endpoint | Fungsi |
+|-------|----------|--------|
+| Register | `/register` | Daftar user baru |
+| Login | `/login` | Login dengan username/password |
+| Forgot Password | `/forgot-password` | Kirim email reset password |
+| Reset Password | `/reset-password` | Reset password dengan token |
+
+**Password di-hash menggunakan SHA-256** untuk keamanan.
+
+---
+
+## 📊 Database Schema (MongoDB)
+
+### Collection: `users`
+```json
+{
+  "_id": "ObjectId",
+  "username": "admin1",
+  "email": "admin@email.com",
+  "password": "hashed_password"
+}
+```
+
+### Collection: `rag_data_knowledge`
+```json
+{
+  "_id": "ObjectId",
+  "title": "Katalog Produk",
+  "content": "Isi dokumen...",
+  "source": "katalog.pdf",
+  "embedding": [0.23, -0.45, ...],
+  "metadata": {"file_type": "pdf"}
+}
+```
+
+### Collection: `whatsapp_conversations`
+```json
+{
+  "_id": "ObjectId",
+  "phone_number": "628123456789@c.us",
+  "messages": [
+    {"user": "Halo", "assistant": "Hai!"}
+  ]
+}
+```
+
+---
+
+## 🎤 Tips Presentasi
+
+1. **Demo Live** - Tunjukkan chat langsung di web dan WhatsApp
+2. **Jelaskan RAG** - Ini yang membuat chatbot "pintar"
+3. **Tunjukkan Admin** - Upload PDF, lihat knowledge list
+4. **Arsitektur** - Gunakan diagram di atas
+5. **Keamanan** - Jelaskan password hashing
+
+---
+
+## 📝 Pertanyaan yang Mungkin Ditanyakan
+
+| Pertanyaan | Jawaban |
+|------------|---------|
+| Kenapa pakai RAG? | Agar chatbot hanya menjawab dari data kita, tidak mengarang |
+| Kenapa pakai Groq? | Gratis, cepat, model LLaMA 3.3 powerful |
+| Kenapa MongoDB? | NoSQL, fleksibel untuk menyimpan embedding |
+| Bagaimana jika offline? | WhatsApp tetap jalan via WAHA di VPS |

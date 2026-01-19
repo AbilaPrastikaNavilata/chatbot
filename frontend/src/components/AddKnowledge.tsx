@@ -1,3 +1,26 @@
+/**
+ * =============================================================================
+ * ➕ KOMPONEN ADD KNOWLEDGE
+ * =============================================================================
+ * 
+ * File ini berisi form untuk menambah knowledge secara manual.
+ * 
+ * CARA KERJA:
+ * 1. User mengisi form (title, content, source, metadata)
+ * 2. Data dikirim ke backend /add-knowledge endpoint
+ * 3. Backend membuat embedding dan menyimpan ke MongoDB
+ * 
+ * FITUR:
+ * - Form input dengan validasi
+ * - Support metadata dalam format key:value
+ * - Feedback success/error setelah submit
+ * 
+ * TEKNOLOGI:
+ * - React dengan TypeScript
+ * - shadcn/ui untuk komponen UI
+ * =============================================================================
+ */
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +46,7 @@ export function AddKnowledge({ onKnowledgeAdded }: AddKnowledgeProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.title.trim() || !formData.content.trim()) {
       setMessage({ type: 'error', text: 'Title and content are required' });
       return;
@@ -75,9 +98,9 @@ export function AddKnowledge({ onKnowledgeAdded }: AddKnowledgeProps) {
         setMessage({ type: 'error', text: 'Failed to add knowledge' });
       }
     } catch (err) {
-      setMessage({ 
-        type: 'error', 
-        text: err instanceof Error ? err.message : 'Failed to add knowledge' 
+      setMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Failed to add knowledge'
       });
     } finally {
       setLoading(false);
@@ -149,11 +172,10 @@ export function AddKnowledge({ onKnowledgeAdded }: AddKnowledgeProps) {
             </div>
 
             {message && (
-              <div className={`p-3 rounded-md text-sm ${
-                message.type === 'success' 
-                  ? 'bg-green-50 text-green-700 border border-green-200' 
+              <div className={`p-3 rounded-md text-sm ${message.type === 'success'
+                  ? 'bg-green-50 text-green-700 border border-green-200'
                   : 'bg-red-50 text-red-700 border border-red-200'
-              }`}>
+                }`}>
                 {message.text}
               </div>
             )}

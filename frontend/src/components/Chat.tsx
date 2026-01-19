@@ -1,3 +1,31 @@
+/**
+ * =============================================================================
+ * 💬 KOMPONEN CHAT
+ * =============================================================================
+ * 
+ * File ini berisi komponen utama interface Chat dengan AI (SinBot).
+ * Ini adalah fitur inti dari aplikasi.
+ * 
+ * CARA KERJA:
+ * 1. User mengetik pertanyaan di input field
+ * 2. Pertanyaan dikirim ke backend /chat endpoint
+ * 3. Backend memproses dengan RAG (Retrieval-Augmented Generation)
+ * 4. Jawaban ditampilkan dalam format chat bubble
+ * 
+ * FITUR:
+ * - Real-time chat dengan AI
+ * - History chat disimpan di localStorage
+ * - Typing indicator saat AI memproses
+ * - Markdown rendering untuk jawaban AI
+ * - Menampilkan sumber referensi dari knowledge base
+ * 
+ * TEKNOLOGI:
+ * - React dengan TypeScript
+ * - ReactMarkdown untuk rendering markdown
+ * - localStorage untuk menyimpan history
+ * =============================================================================
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -242,8 +270,8 @@ const Chat: React.FC = () => {
                 }`}>
                 {/* Avatar */}
                 <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${msg.type === 'user'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 text-gray-600'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-200 text-gray-600'
                   }`}>
                   {msg.type === 'user' ? (
                     <User className="w-4 h-4" />
@@ -255,8 +283,8 @@ const Chat: React.FC = () => {
                 {/* Message Bubble */}
                 <div className="flex flex-col">
                   <div className={`px-4 py-2 rounded-2xl ${msg.type === 'user'
-                      ? 'bg-blue-500 text-white rounded-br-md'
-                      : 'bg-white text-gray-800 rounded-bl-md shadow-sm border'
+                    ? 'bg-blue-500 text-white rounded-br-md'
+                    : 'bg-white text-gray-800 rounded-bl-md shadow-sm border'
                     }`}>
                     {msg.type === 'user' ? (
                       <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>

@@ -1,4 +1,21 @@
-# Tambahkan import ini di bagian atas
+# =============================================================================
+# 📌 SINBOT - RAG CHATBOT BACKEND
+# =============================================================================
+# File ini adalah file utama backend untuk SinBot Chatbot.
+# Menggunakan FastAPI sebagai web framework dan Groq (LLaMA 3.3) untuk AI.
+# 
+# TEKNOLOGI YANG DIGUNAKAN:
+# - FastAPI: Framework web Python untuk membuat REST API
+# - MongoDB: Database NoSQL untuk menyimpan knowledge dan user
+# - Sentence Transformers: Model AI untuk membuat embedding teks
+# - Groq: API untuk mengakses model LLaMA 3.3 (chatbot AI)
+# - SMTP: Untuk mengirim email (reset password)
+# =============================================================================
+
+# =============================================================================
+# 📦 BAGIAN 1: IMPORT LIBRARY
+# =============================================================================
+# Import semua library yang dibutuhkan oleh aplikasi
 from fastapi import FastAPI, HTTPException, File, UploadFile
 import hashlib
 import aiosmtplib
@@ -35,22 +52,30 @@ import uvicorn
 import io
 import asyncio
 
-# Load environment variables
+# =============================================================================
+# ⚙️ BAGIAN 2: KONFIGURASI APLIKASI
+# =============================================================================
+# Memuat environment variables dari file .env
 load_dotenv()
 
-# Initialize FastAPI app
+# Inisialisasi aplikasi FastAPI dengan judul "RAG Chatbot API"
 app = FastAPI(title="RAG Chatbot API")
 
-# Add CORS middleware
+# CORS Middleware - Mengizinkan frontend mengakses backend dari domain berbeda
+# allow_origins=["*"] artinya semua domain diizinkan (untuk development)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust in production
+    allow_origins=["*"],  # Di production, ganti dengan domain spesifik
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Izinkan semua method (GET, POST, PUT, DELETE)
+    allow_headers=["*"],  # Izinkan semua header
 )
 
-# MongoDB connection with SSL bypass for Docker compatibility
+# =============================================================================
+# 🗄️ BAGIAN 3: KONEKSI DATABASE MONGODB
+# =============================================================================
+# Mengambil URI MongoDB dari environment variable
+# URI ini berisi alamat server, username, dan password database
 MONGODB_URI = os.getenv("MONGODB_URI")
 
 # Try multiple SSL configurations
@@ -88,10 +113,15 @@ knowledge_collection = db.get_collection("rag_data_knowledge")
 users_collection = db.get_collection("users")
 conversations_collection = db.get_collection("whatsapp_conversations")
 
-# Initialize embedding model
-model = SentenceTransformer('all-MiniLM-L6-v2')  # Good balance of speed and quality
+# =============================================================================
+# 🧠 BAGIAN 4: INISIALISASI MODEL AI
+# =============================================================================
+# Model embedding untuk mengubah teks menjadi vektor angka
+# all-MiniLM-L6-v2 adalah model yang ringan tapi akurat
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Initialize Groq
+# Inisialisasi Groq Client untuk mengakses LLaMA 3.3
+# GROQ_API_KEY diambil dari file .env
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 groq_client = Groq(api_key=GROQ_API_KEY)
 
@@ -107,7 +137,11 @@ SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_EMAIL = os.getenv("SMTP_EMAIL")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-
+# =============================================================================
+# 📝 BAGIAN 5: PYDANTIC MODELS (STRUKTUR DATA)
+# =============================================================================
+# Pydantic digunakan untuk validasi data yang masuk ke API
+# Setiap class mendefinisikan struktur data yang diharapkan
 # Pydantic models
 class ChatRequest(BaseModel):
     message: str
@@ -150,15 +184,20 @@ class WhatsAppChatResponse(BaseModel):
     response: str
     phone_number: str
     sources: Optional[List[Dict[str, Any]]] = []
+# =============================================================================
+# 🔧 BAGIAN 6: HELPER FUNCTIONS (FUNGSI PEMBANTU)
+# =============================================================================
 
-# Helper functions
+# Fungsi untuk menghasilkan embedding (vektor) dari teks
+# Embedding digunakan untuk mencari dokumen yang mirip
 async def generate_embedding(text: str):
-    """Generate embedding for text using SentenceTransformer"""
+    """Generate embedding untuk teks menggunakan SentenceTransformer"""
     embedding = model.encode(text)
     return embedding.tolist()
-
+# Fungsi untuk menambah knowledge ke database
+# Otomatis membuat embedding dari konten sebelum disimpan
 async def add_knowledge(knowledge: KnowledgeItem):
-    """Add knowledge to database with embedding"""
+    """Tambah knowledge ke database beserta embedding-nya"""
     embedding = await generate_embedding(knowledge.content)
     document = {
         "title": knowledge.title,
@@ -169,9 +208,10 @@ async def add_knowledge(knowledge: KnowledgeItem):
     }
     result = await knowledge_collection.insert_one(document)
     return result.inserted_id
-
+# Fungsi untuk mencari dokumen yang mirip dengan query
+# Menggunakan cosine similarity untuk mengukur kemiripan
 async def search_similar_documents(query: str, limit: int = 5):
-    """Search for similar documents by computing similarity in the application"""
+    """Cari dokumen yang mirip berdasarkan cosine similarity"""
     query_embedding = await generate_embedding(query)
     
     # Fetch all documents (consider pagination for large collections)
@@ -206,10 +246,10 @@ async def search_similar_documents(query: str, limit: int = 5):
     top_results = results_with_scores[:limit]
     
     return top_results
-
-# Tambahkan fungsi helper untuk menghitung cosine similarity
+# Fungsi untuk menghitung cosine similarity antara 2 vektor
+# Nilai 1 = sangat mirip, 0 = tidak mirip sama sekali
 def cosine_similarity(vec1, vec2):
-    """Calculate cosine similarity between two vectors"""
+    """Hitung cosine similarity antara dua vektor"""
     # Convert to numpy arrays if they aren't already
     vec1 = np.array(vec1)
     vec2 = np.array(vec2)
@@ -226,9 +266,16 @@ def cosine_similarity(vec1, vec2):
     # Calculate cosine similarity
     similarity = dot_product / (magnitude1 * magnitude2)
     return float(similarity)
-
+# =============================================================================
+# 🤖 BAGIAN 7: FUNGSI RAG (RETRIEVAL-AUGMENTED GENERATION)
+# =============================================================================
+# Ini adalah fungsi utama chatbot!
+# Langkah-langkah:
+# 1. Cari dokumen yang relevan dengan pertanyaan user
+# 2. Gabungkan dokumen relevan sebagai konteks
+# 3. Kirim ke Groq/LLaMA untuk menghasilkan jawaban
 async def process_chat(message: str, history: List[Dict[str, str]]):
-    """Process chat message with RAG approach using Groq"""
+    """Proses chat dengan pendekatan RAG menggunakan Groq"""
     # Search for relevant context
     relevant_docs = await search_similar_documents(message)
     
@@ -299,10 +346,10 @@ Ingat: Jika tidak ada informasi yang relevan di konteks di atas, tolak dengan so
             "similarity_score": round(doc["score"], 4)
         } for doc in relevant_docs]
     }
-
-# Helper function untuk hash password
+# Fungsi untuk hash password menggunakan SHA-256
+# Password TIDAK disimpan dalam bentuk plain text untuk keamanan
 def hash_password(password: str) -> str:
-    """Hash password menggunakan SHA-256"""
+    """Hash password menggunakan algoritma SHA-256"""
     return hashlib.sha256(password.encode()).hexdigest()
 
 # Helper function untuk generate reset token
@@ -344,8 +391,11 @@ async def send_email(to_email: str, subject: str, body: str):
         import traceback
         traceback.print_exc()
         return False
+# =============================================================================
+# 🔐 BAGIAN 8: ENDPOINT AUTENTIKASI
+# =============================================================================
 
-# Routes - Authentication
+# Endpoint untuk registrasi user baru
 @app.post("/register")
 async def register_user(user: UserRegister):
     """Register user baru"""
@@ -380,7 +430,7 @@ async def register_user(user: UserRegister):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+# Endpoint untuk login user
 @app.post("/login")
 async def login_user(user: UserLogin):
     """Login user"""
@@ -554,8 +604,11 @@ async def verify_reset_token(token: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+# =============================================================================
+# 💬 BAGIAN 9: ENDPOINT CHAT
+# =============================================================================
 
-# Routes
+# Endpoint utama untuk chat dari frontend web
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
     """Chat endpoint for frontend integration"""
@@ -564,7 +617,8 @@ async def chat_endpoint(request: ChatRequest):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+# Endpoint khusus untuk WhatsApp (dipanggil oleh n8n)
+# Menyimpan history percakapan per nomor telepon
 @app.post("/whatsapp-chat", response_model=WhatsAppChatResponse)
 async def whatsapp_chat_endpoint(request: WhatsAppChatRequest):
     """WhatsApp chat endpoint with conversation history"""
@@ -620,8 +674,11 @@ async def whatsapp_chat_endpoint(request: WhatsAppChatRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+# =============================================================================
+# 📚 BAGIAN 10: ENDPOINT KNOWLEDGE MANAGEMENT
+# =============================================================================
 
-# Add pagination models
+# Model untuk pagination
 class PaginationParams(BaseModel):
     page: int = 1
     limit: int = 15
@@ -795,8 +852,11 @@ async def extract_text_from_pdf(file_content: bytes) -> tuple[str, str]:
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error processing PDF: {str(e)}")
 
+# =============================================================================
+# 📁 BAGIAN 11: ENDPOINT UPLOAD FILE
+# =============================================================================
+# Endpoint untuk upload file PDF/TXT ke knowledge base
 
-# File Upload Endpoints
 @app.post("/upload-file")
 async def upload_file(file: UploadFile = File(...)):
     """Upload and process various file types (PDF, TXT, XLSX, CSV)"""

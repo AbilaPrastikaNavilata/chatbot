@@ -1,3 +1,29 @@
+/**
+ * =============================================================================
+ * 📁 KOMPONEN FILE UPLOAD
+ * =============================================================================
+ * 
+ * File ini berisi komponen untuk upload file PDF/TXT ke knowledge base.
+ * 
+ * CARA KERJA:
+ * 1. User memilih file PDF atau TXT
+ * 2. File di-upload ke backend /upload-file endpoint
+ * 3. Backend ekstrak teks dari file
+ * 4. Teks disimpan sebagai knowledge item dengan embedding
+ * 
+ * FITUR:
+ * - Upload multiple files sekaligus
+ * - Progress indicator saat upload
+ * - Riwayat upload dengan status (success/error)
+ * - Mendukung PDF dan TXT
+ * 
+ * TEKNOLOGI:
+ * - React dengan TypeScript
+ * - FormData untuk upload file
+ * - shadcn/ui untuk komponen UI
+ * =============================================================================
+ */
+
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -196,8 +222,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
                 <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center space-x-3 flex-1">
                     <div className={`p-2 rounded-full ${file.status === 'success' ? 'bg-green-100 text-green-600' :
-                        file.status === 'error' ? 'bg-red-100 text-red-600' :
-                          'bg-blue-100 text-blue-600'
+                      file.status === 'error' ? 'bg-red-100 text-red-600' :
+                        'bg-blue-100 text-blue-600'
                       }`}>
                       {file.status === 'success' ? (
                         <CheckCircle className="w-4 h-4" />

@@ -1,3 +1,23 @@
+/**
+ * =============================================================================
+ * 🔐 KOMPONEN LOGIN
+ * =============================================================================
+ * 
+ * File ini berisi komponen halaman Login untuk admin SinBot.
+ * 
+ * FITUR:
+ * - Form login dengan username dan password
+ * - Toggle show/hide password
+ * - Validasi input
+ * - Link ke halaman Register dan Forgot Password
+ * 
+ * TEKNOLOGI:
+ * - React dengan TypeScript
+ * - shadcn/ui untuk komponen UI
+ * - AuthContext untuk state management autentikasi
+ * =============================================================================
+ */
+
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';

@@ -1,3 +1,24 @@
+/**
+ * =============================================================================
+ * 📚 KOMPONEN KNOWLEDGE LIST
+ * =============================================================================
+ * 
+ * File ini menampilkan daftar semua knowledge items dalam bentuk card grid.
+ * 
+ * FITUR:
+ * - Menampilkan knowledge dalam grid layout
+ * - Pagination untuk menangani banyak data
+ * - Sorting (terbaru/terlama)
+ * - Selection mode untuk hapus multiple items
+ * - View, edit, dan delete knowledge items
+ * 
+ * TEKNOLOGI:
+ * - React dengan TypeScript
+ * - shadcn/ui untuk komponen UI
+ * - Fetch API untuk komunikasi dengan backend
+ * =============================================================================
+ */
+
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
