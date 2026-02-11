@@ -13,7 +13,7 @@
 # =============================================================================
 
 # =============================================================================
-# 📦 BAGIAN 1: IMPORT LIBRARY
+# BAGIAN 1: IMPORT LIBRARY
 # =============================================================================
 # Import semua library yang dibutuhkan oleh aplikasi
 from fastapi import FastAPI, HTTPException, File, UploadFile
@@ -53,7 +53,7 @@ import io
 import asyncio
 
 # =============================================================================
-# ⚙️ BAGIAN 2: KONFIGURASI APLIKASI
+# BAGIAN 2: KONFIGURASI APLIKASI
 # =============================================================================
 # Memuat environment variables dari file .env
 load_dotenv()
@@ -72,7 +72,7 @@ app.add_middleware(
 )
 
 # =============================================================================
-# 🗄️ BAGIAN 3: KONEKSI DATABASE MONGODB
+# BAGIAN 3: KONEKSI DATABASE MONGODB
 # =============================================================================
 # Mengambil URI MongoDB dari environment variable
 # URI ini berisi alamat server, username, dan password database
@@ -114,7 +114,7 @@ users_collection = db.get_collection("users")
 conversations_collection = db.get_collection("whatsapp_conversations")
 
 # =============================================================================
-# 🧠 BAGIAN 4: INISIALISASI MODEL AI
+# BAGIAN 4: INISIALISASI MODEL AI
 # =============================================================================
 # Model embedding untuk mengubah teks menjadi vektor angka
 # all-MiniLM-L6-v2 adalah model yang ringan tapi akurat
@@ -137,8 +137,9 @@ SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_EMAIL = os.getenv("SMTP_EMAIL")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+
 # =============================================================================
-# 📝 BAGIAN 5: PYDANTIC MODELS (STRUKTUR DATA)
+# BAGIAN 5: PYDANTIC MODELS (STRUKTUR DATA)
 # =============================================================================
 # Pydantic digunakan untuk validasi data yang masuk ke API
 # Setiap class mendefinisikan struktur data yang diharapkan
@@ -184,8 +185,9 @@ class WhatsAppChatResponse(BaseModel):
     response: str
     phone_number: str
     sources: Optional[List[Dict[str, Any]]] = []
+
 # =============================================================================
-# 🔧 BAGIAN 6: HELPER FUNCTIONS (FUNGSI PEMBANTU)
+# BAGIAN 6: HELPER FUNCTIONS (FUNGSI PEMBANTU)
 # =============================================================================
 
 # Fungsi untuk menghasilkan embedding (vektor) dari teks
@@ -266,8 +268,9 @@ def cosine_similarity(vec1, vec2):
     # Calculate cosine similarity
     similarity = dot_product / (magnitude1 * magnitude2)
     return float(similarity)
+
 # =============================================================================
-# 🤖 BAGIAN 7: FUNGSI RAG (RETRIEVAL-AUGMENTED GENERATION)
+# BAGIAN 7: FUNGSI RAG (RETRIEVAL-AUGMENTED GENERATION)
 # =============================================================================
 # Ini adalah fungsi utama chatbot!
 # Langkah-langkah:
@@ -391,8 +394,9 @@ async def send_email(to_email: str, subject: str, body: str):
         import traceback
         traceback.print_exc()
         return False
+    
 # =============================================================================
-# 🔐 BAGIAN 8: ENDPOINT AUTENTIKASI
+# BAGIAN 8: ENDPOINT AUTENTIKASI
 # =============================================================================
 
 # Endpoint untuk registrasi user baru
@@ -604,8 +608,9 @@ async def verify_reset_token(token: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
 # =============================================================================
-# 💬 BAGIAN 9: ENDPOINT CHAT
+# BAGIAN 9: ENDPOINT CHAT
 # =============================================================================
 
 # Endpoint utama untuk chat dari frontend web
@@ -674,8 +679,9 @@ async def whatsapp_chat_endpoint(request: WhatsAppChatRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
 # =============================================================================
-# 📚 BAGIAN 10: ENDPOINT KNOWLEDGE MANAGEMENT
+# BAGIAN 10: ENDPOINT KNOWLEDGE MANAGEMENT
 # =============================================================================
 
 # Model untuk pagination
@@ -853,7 +859,7 @@ async def extract_text_from_pdf(file_content: bytes) -> tuple[str, str]:
         raise HTTPException(status_code=400, detail=f"Error processing PDF: {str(e)}")
 
 # =============================================================================
-# 📁 BAGIAN 11: ENDPOINT UPLOAD FILE
+# BAGIAN 11: ENDPOINT UPLOAD FILE
 # =============================================================================
 # Endpoint untuk upload file PDF/TXT ke knowledge base
 
