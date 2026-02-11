@@ -56,7 +56,7 @@ import asyncio
 # BAGIAN 2: KONFIGURASI APLIKASI
 # =============================================================================
 # Memuat environment variables dari file .env
-load_dotenv()
+load_dotenv(override=True)
 
 # Inisialisasi aplikasi FastAPI dengan judul "RAG Chatbot API"
 app = FastAPI(title="RAG Chatbot API")
