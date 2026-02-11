@@ -32,7 +32,7 @@ const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onSwitchToLogin }) => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Gagal mengirim email reset password');
+        throw new Error(errorData.detail || 'Gagal mengirim email reset password');
       }
 
       setSuccess('Link reset password telah dikirim ke email Anda. Silakan cek inbox atau folder spam.');

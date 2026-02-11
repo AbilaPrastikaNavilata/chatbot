@@ -22,14 +22,6 @@ import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import secrets
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import secrets
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import secrets
 
 import PyPDF2
 from pathlib import Path
@@ -131,12 +123,6 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_EMAIL = os.getenv("SMTP_EMAIL")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 SMTP_SENDER_NAME = os.getenv("SMTP_SENDER_NAME", "Knowledge Management System")
-
-# SMTP Configuration
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_EMAIL = os.getenv("SMTP_EMAIL")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
 # =============================================================================
 # BAGIAN 5: PYDANTIC MODELS (STRUKTUR DATA)
@@ -489,7 +475,7 @@ async def forgot_password(request: ForgotPasswordRequest):
         )
         
         # Buat link reset password (sesuaikan dengan URL frontend Anda)
-        reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
+        reset_link = f"https://nvknowledge.site/reset-password?token={reset_token}"
         
         # Buat email body
         email_body = f"""
